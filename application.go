@@ -16,9 +16,10 @@ import (
 // mapped to one or more directories or groups, whose users are then granted
 // access to the application.
 type Application struct {
-	Href      string // Stormpath URL for this application
-	ApiId     string // Stormpath API key ID
-	ApiSecret string // Stormpath API key secret
+	Href           string // Stormpath URL for this application
+	ApiId          string // Stormpath API key ID
+	ApiSecret      string // Stormpath API key secret
+	LoadCustomData bool   // Whether it should load custom data on login
 }
 
 func (a *Application) userinfo() *url.Userinfo {
@@ -102,6 +103,9 @@ func (app *Application) Authenticate(username, password string) (Account, error)
 func (app *Application) GetAccount(href string) (Account, error) {
 	acct := Account{}
 	e := new(StormpathError)
+	if app.LoadCustomData {
+		href = href + "?expand=customData"
+	}
 	rr := restclient.RequestResponse{
 		Userinfo: app.userinfo(),
 		Url:      href,
@@ -112,6 +116,11 @@ func (app *Application) GetAccount(href string) (Account, error) {
 	status, err := restclient.Do(&rr)
 	if err != nil {
 		return acct, err
+	}
+	// remove additional metadata because it will prevent us from saving
+	if app.LoadCustomData && acct.CustomData != nil {
+		delete(acct.CustomData, "createdAt")
+		delete(acct.CustomData, "modifiedAt")
 	}
 	acct.app = app
 	if status != 200 {

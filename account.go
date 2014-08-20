@@ -18,17 +18,18 @@ type Href struct {
 // email fields for accounts are unique within a directory and are used to log
 // into applications.
 type Account struct {
-	Href       string `json:"href,omitempty"`       // The resource fully qualified location URI
-	Username   string `json:"username,omitempty"`   // The username for the account. Must be unique across the owning directory. If not specified, the username will default to the email field.	1 < N <= 255 characters
-	Email      string `json:"email,omitempty"`      // The email address for the account. Must be unique across the owning directory.	1 < N <= 255 characters
-	Password   string `json:"password,omitempty"`   // The password for the account. Only include this property if setting or changing the account password.	1 < N <= 255 characters
-	GivenName  string `json:"givenName,omitempty"`  // The given (first) name for the account holder.	1 < N <= 255 characters
-	MiddleName string `json:"middleName,omitempty"` // The middle (second) name for the account holder.	1 < N <= 255 characters
-	Surname    string `json:"surname,omitempty"`    // The surname (last name) for the account holder.	1 < N <= 255 characters
-	Status     string `json:"status,omitempty"`     // Enabled accounts are able to login to their assigned applications.	Enum	enabled,disabled
-	Groups     Href   `json:"groups,omitempty"`     // A link to the groups that the account belongs to.
-	Directory  Href   `json:"directory,omitempty"`  // A link to the owning directory.
-	Tenant     Href   `json:"tenant,omitempty"`     // A link to the tenant owning the directory the group belongs to.
+	Href       string                 `json:"href,omitempty"`       // The resource fully qualified location URI
+	Username   string                 `json:"username,omitempty"`   // The username for the account. Must be unique across the owning directory. If not specified, the username will default to the email field.	1 < N <= 255 characters
+	Email      string                 `json:"email,omitempty"`      // The email address for the account. Must be unique across the owning directory.	1 < N <= 255 characters
+	Password   string                 `json:"password,omitempty"`   // The password for the account. Only include this property if setting or changing the account password.	1 < N <= 255 characters
+	GivenName  string                 `json:"givenName,omitempty"`  // The given (first) name for the account holder.	1 < N <= 255 characters
+	MiddleName string                 `json:"middleName,omitempty"` // The middle (second) name for the account holder.	1 < N <= 255 characters
+	Surname    string                 `json:"surname,omitempty"`    // The surname (last name) for the account holder.	1 < N <= 255 characters
+	Status     string                 `json:"status,omitempty"`     // Enabled accounts are able to login to their assigned applications.	Enum	enabled,disabled
+	Groups     Href                   `json:"groups,omitempty"`     // A link to the groups that the account belongs to.
+	Directory  Href                   `json:"directory,omitempty"`  // A link to the owning directory.
+	Tenant     Href                   `json:"tenant,omitempty"`     // A link to the tenant owning the directory the group belongs to.
+	CustomData map[string]interface{} `json:"customData,omitempty"` // custom data
 	app        *Application
 }
 
@@ -60,7 +61,7 @@ func (a *Account) Update() error {
 		Userinfo: a.app.userinfo(),
 		Url:      a.Href,
 		Method:   "POST",
-		Data: &a,
+		Data:     &a,
 		Error:    e,
 	}
 	status, err := restclient.Do(&rr)
@@ -71,6 +72,72 @@ func (a *Account) Update() error {
 		log.Println(status)
 		log.Println(e)
 		return BadResponse
+	}
+	return nil // Successful update
+}
+
+func (a *Account) SaveCustomData() error {
+	e := new(StormpathError)
+	rr := restclient.RequestResponse{
+		Userinfo: a.app.userinfo(),
+		Url:      a.Href + "/customData",
+		Method:   "POST",
+		Data:     a.CustomData,
+		Error:    e,
+	}
+	status, err := restclient.Do(&rr)
+	if err != nil {
+		return err
+	}
+	if status != 200 {
+		log.Println(status)
+		log.Println(e)
+		return BadResponse
+	}
+	return nil // Successful update
+}
+
+func (a *Account) LoadCustomData() error {
+	e := new(StormpathError)
+	rr := restclient.RequestResponse{
+		Userinfo: a.app.userinfo(),
+		Url:      a.Href + "/customData",
+		Method:   "GET",
+		Error:    e,
+	}
+	status, err := restclient.Do(&rr)
+	if err != nil {
+		return err
+	}
+	if status != 200 {
+		log.Println(status)
+		log.Println(e)
+		return BadResponse
+	}
+	return nil // Successful update
+}
+
+func (a *Account) DeleteCustomData(field string) error {
+	e := new(StormpathError)
+	rr := restclient.RequestResponse{
+		Userinfo: a.app.userinfo(),
+		Url:      a.Href + "/customData/" + field,
+		Method:   "DELETE",
+		Error:    e,
+	}
+	status, err := restclient.Do(&rr)
+	if err != nil {
+		return err
+	}
+	if status != 200 {
+		log.Println(status)
+		log.Println(e)
+		return BadResponse
+	}
+	if a.CustomData != nil {
+		if _, ok := a.CustomData[field]; ok {
+			delete(a.CustomData, field)
+		}
 	}
 	return nil // Successful update
 }
